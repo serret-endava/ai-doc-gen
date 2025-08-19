@@ -1,137 +1,274 @@
-# AI Documentation Generator
+# Project Title: AI-Powered Code Analysis and Documentation CLI Tool
 
-An AI-powered code documentation generator that automatically analyzes repositories and creates comprehensive documentation using advanced language models. The system employs a multi-agent architecture to perform specialized code analysis and generate structured documentation.
+## Project Overview
 
-## 📝 Blog Posts
+This project is a command-line interface (CLI) tool designed to perform asynchronous AI-driven code analysis and documentation generation on software repositories. It integrates with external Git repository services such as GitLab and Bitbucket to automate project analysis, generate detailed markdown reports, and create merge requests with analysis results.
 
-Read the full story behind this project:
-- 🇺🇸 [English: Docs That Don’t Rot: How Multi-Agent AI Rewrote Our Workflow](https://medium.com/@milad.noroozi/docs-that-dont-rot-how-multi-agent-ai-rewrote-our-workflow-6e0c911658d6)
-- 🇮🇷 [از دستیار کدنویس تا همکار هوشمند؛ گام اول: کابوس مستندسازی](https://virgool.io/@divar/%D8%A7%D8%B2-%D8%AF%D8%B3%D8%AA%DB%8C%D8%A7%D8%B1-%DA%A9%D8%AF%D9%86%D9%88%DB%8C%D8%B3-%D8%AA%D8%A7-%D9%87%D9%85%DA%A9%D8%A7%D8%B1-%D9%87%D9%88%D8%B4%D9%85%D9%86%D8%AF-%DA%AF%D8%A7%D9%85-%D8%A7%D9%88%D9%84-%DA%A9%D8%A7%D8%A8%D9%88%D8%B3-%D9%85%D8%B3%D8%AA%D9%86%D8%AF%D8%B3%D8%A7%D8%B2%DB%8C-jx7vhznchc9w)
+### Purpose and Main Functionality
+- Analyze code repositories asynchronously using AI agents.
+- Generate comprehensive README documentation automatically.
+- Automate scheduled analysis jobs on GitLab projects with merge request creation.
+- Provide a modular, extensible CLI interface for various code analysis and documentation tasks.
+
+### Key Features and Capabilities
+- CLI commands for analysis (`analyze`), documentation generation (`document`), and scheduled cronjob analysis (`cronjob analyze`).
+- Asynchronous execution of AI agents for efficient processing.
+- Integration with GitLab and Bitbucket APIs for project discovery, cloning, and merge request management.
+- Configuration management via Pydantic models and YAML config files.
+- Structured logging and telemetry with OpenTelemetry and Langfuse.
+- Resilient HTTP client with retry and exponential backoff.
+
+### Likely Intended Use Cases
+- Developers and teams seeking automated insights into codebases.
+- Continuous integration pipelines requiring automated code analysis and documentation.
+- Scheduled maintenance jobs to keep project documentation and analysis up to date.
+- Organizations using GitLab or Bitbucket for source control and merge request workflows.
+
+---
 
 ## Table of Contents
 
-- [Features](#features)
-- [Installation](#installation)
-- [Quick Start](#quick-start)
-- [Usage](#usage)
-- [Configuration](#configuration)
+- [Project Overview](#project-overview)
 - [Architecture](#architecture)
-- [License](#license)
+- [C4 Model Architecture](#c4-model-architecture)
+- [Repository Structure](#repository-structure)
+- [Dependencies and Integration](#dependencies-and-integration)
+- [API Documentation](#api-documentation)
+- [Development Notes](#development-notes)
+- [Known Issues and Limitations](#known-issues-and-limitations)
+- [Additional Documentation](#additional-documentation)
 
-## Features
-
-- **Multi-Agent Analysis**: Specialized AI agents for code structure, data flow, dependency, request flow, and API analysis
-- **Automated Documentation**: Generates comprehensive README files with configurable sections
-- **GitLab Integration**: Automated analysis for GitLab projects with merge request creation
-- **Concurrent Processing**: Parallel execution of analysis agents for improved performance
-- **Flexible Configuration**: YAML-based configuration with environment variable overrides
-- **Multiple LLM Support**: Works with any OpenAI-compatible API (OpenAI, OpenRouter, local models, etc.)
-- **Observability**: Built-in monitoring with OpenTelemetry tracing and Langfuse integration
-
-## Installation
-
-### Prerequisites
-
-- Python 3.13
-- Git
-- API access to an OpenAI-compatible LLM provider
-
-1. Clone the repository:
-```bash
-git clone https://github.com/divar-ir/ai-doc-gen.git
-cd ai-doc-gen
-```
-
-2. Install using uv (recommended):
-```bash
-curl -LsSf https://astral.sh/uv/install.sh | sh
-uv sync
-```
-
-3. Or install with pip:
-```bash
-pip install -e .
-```
-
-## Quick Start
-
-1. Set up your environment and configuration:
-```bash
-# Copy and edit environment variables
-cp .env.sample .env
-
-# Copy and edit configuration
-mkdir -p .ai
-cp config_example.yaml .ai/config.yaml
-```
-
-2. Run analysis and generate documentation:
-```bash
-# Analyze your repository
-uv run src/main.py analyze --repo-path .
-
-# Generate documentation
-uv run src/main.py document --repo-path .
-```
-
-Generated documentation will be saved to `.ai/docs/` directory.
-
-## Usage
-
-### Advanced Options
-
-```bash
-# Analyze with specific exclusions
-uv run src/main.py analyze --repo-path . --exclude-code-structure --exclude-data-flow
-
-# Generate with specific section exclusions
-uv run src/main.py document --repo-path . --exclude-architecture --exclude-c4-model
-
-# Use existing README as context
-uv run src/main.py document --repo-path . --use-existing-readme
-
-# Use custom configuration file
-uv run src/main.py analyze --repo-path . --config /path/to/config.yaml
-
-# GitLab cronjob integration
-uv run src/main.py cronjob analyze
-```
-
-## Configuration
-
-The tool automatically looks for configuration in `.ai/config.yaml` or `.ai/config.yml` in your repository.
-
-### Configuration Options
-
-- **Exclude specific analyses**: Skip code structure, data flow, dependencies, request flow, or API analysis
-- **Customize README sections**: Control which sections appear in generated documentation  
-- **Configure cronjob settings**: Set working paths and commit recency filters
-
-You can use CLI flags for quick configuration overrides. See [`config_example.yaml`](config_example.yaml) for all available options and [`.env.sample`](.env.sample) for environment variables.
+---
 
 ## Architecture
 
-The system uses a **multi-agent architecture** with specialized AI agents for different types of code analysis:
+### High-level Architecture Overview
 
-- **CLI Layer**: Entry point with command parsing
-- **Handler Layer**: Command-specific business logic (analyze, document, cronjob)
-- **Agent Layer**: AI-powered analysis and documentation generation
-- **Tool Layer**: File system operations and utilities
+The system is a modular CLI tool that orchestrates asynchronous AI agents to analyze code repositories and generate documentation. It integrates with external Git services for project management and automates merge request creation. The architecture separates concerns into handlers, agents, providers, and utilities.
 
-### Technology Stack
+### Technology Stack and Frameworks
 
-- **Python 3.13** with pydantic-ai for AI agent orchestration
-- **OpenAI-compatible APIs** for LLM access (OpenAI, OpenRouter, etc.)
-- **GitPython & python-gitlab** for repository operations
-- **OpenTelemetry & Langfuse** for observability
-- **YAML + Pydantic** for configuration management
+- Python 3 with asynchronous programming (asyncio)
+- Pydantic for data validation and configuration management
+- Jinja2 for prompt templating
+- OpenTelemetry and Langfuse for telemetry and tracing
+- GitLab and Bitbucket API clients
+- HTTPX and Tenacity for resilient HTTP client with retry logic
+- GitPython for git repository operations
 
-## License
+### Component Relationships
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+```mermaid
+flowchart TB
+  subgraph CLI
+    A[CLI Entry Point (src/main.py)]
+  end
 
-## Acknowledgments
+  subgraph Handlers
+    B1[AnalyzeHandler]
+    B2[ReadmeHandler]
+    B3[JobAnalyzeHandler]
+  end
 
-- Built with [pydantic-ai](https://ai.pydantic.dev/) for AI agent orchestration
-- Supports multiple LLM providers through OpenAI-compatible APIs (including OpenRouter)
-- Uses [Langfuse](https://langfuse.com/) for LLM observability
+  subgraph Agents
+    C1[AnalyzerAgent]
+    C2[DocumenterAgent]
+  end
+
+  subgraph Providers
+    D1[GitLabProvider]
+    D2[BitbucketProvider]
+  end
+
+  subgraph Utils
+    E1[Logger]
+    E2[PromptManager]
+    E3[Retrying HTTP Client]
+    E4[Repo Utilities]
+  end
+
+  A -->|Dispatch commands| B1
+  A --> B2
+  A --> B3
+
+  B1 -->|Invoke| C1
+  B2 -->|Invoke| C2
+  B3 -->|Use| B1
+  B3 -->|Use| D1
+
+  B1 --> E1
+  B2 --> E1
+  B3 --> E1
+
+  C1 --> E2
+  C2 --> E2
+
+  D1 --> E3
+  D2 --> E3
+
+  B3 --> D1
+
+  style A fill:#f9f,stroke:#333,stroke-width:2px
+  style B1 fill:#bbf,stroke:#333,stroke-width:1px
+  style B2 fill:#bbf,stroke:#333,stroke-width:1px
+  style B3 fill:#bbf,stroke:#333,stroke-width:1px
+  style C1 fill:#bfb,stroke:#333,stroke-width:1px
+  style C2 fill:#bfb,stroke:#333,stroke-width:1px
+  style D1 fill:#ffb,stroke:#333,stroke-width:1px
+  style D2 fill:#ffb,stroke:#333,stroke-width:1px
+  style E1 fill:#fbb,stroke:#333,stroke-width:1px
+  style E2 fill:#fbb,stroke:#333,stroke-width:1px
+  style E3 fill:#fbb,stroke:#333,stroke-width:1px
+  style E4 fill:#fbb,stroke:#333,stroke-width:1px
+```
+
+### Key Design Patterns
+
+- Factory pattern for provider instantiation based on configuration.
+- Dependency injection via constructor parameters for handlers and providers.
+- Asynchronous programming with async/await for concurrency.
+- Template rendering for prompt generation using Jinja2.
+
+---
+
+## C4 Model Architecture
+
+<details>
+<summary>Context Diagram</summary>
+
+```mermaid
+flowchart TB
+  User[User (Developer/CI System)]
+  CLI[CLI Tool]
+  GitLab[GitLab Service]
+  Bitbucket[Bitbucket Service]
+  LLM[LLM Providers (OpenAI, Gemini)]
+
+  User -->|Runs commands| CLI
+  CLI -->|Uses API tokens| GitLab
+  CLI -->|Uses API tokens| Bitbucket
+  CLI -->|Calls| LLM
+
+  classDef external fill:#f96,stroke:#333,stroke-width:1px,color:#000
+  class GitLab,Bitbucket,LLM external
+```
+
+</details>
+
+<details>
+<summary>Container Diagram</summary>
+
+```mermaid
+flowchart TB
+  subgraph CLI Tool
+    direction TB
+    Main[Main CLI Entry (src/main.py)]
+    Handlers[Handlers]
+    Agents[Agents]
+    Providers[Providers]
+    Utils[Utilities]
+  end
+
+  Main -->|Dispatch commands| Handlers
+  Handlers -->|Invoke asynchronously| Agents
+  Handlers -->|Use| Providers
+  Handlers -->|Use| Utils
+  Providers -->|HTTP API calls| ExternalAPIs[GitLab/Bitbucket APIs]
+  Agents -->|Call| LLMs[LLM APIs]
+
+  class ExternalAPIs external
+  class LLMs external
+```
+
+</details>
+
+---
+
+## Repository Structure
+
+| Directory/File         | Purpose                                      |
+|-----------------------|----------------------------------------------|
+| `src/main.py`          | CLI entry point and command dispatcher       |
+| `src/handlers/`        | Command handlers for analyze, document, cronjob |
+| `src/agents/`          | AI agent implementations for analysis and documentation |
+| `src/providers/`       | External service API clients (GitLab, Bitbucket) |
+| `src/utils/`           | Shared utilities (logging, prompt management, HTTP client) |
+| `.ai/docs/`            | Generated markdown analysis and documentation files |
+
+---
+
+## Dependencies and Integration
+
+### Internal and External Service Dependencies
+
+- GitLab API for project discovery, cloning, branch and merge request management.
+- Bitbucket API for similar repository and pull request management.
+- LLM providers (OpenAI, Gemini) for AI-driven code analysis and documentation.
+- Logging and telemetry services via OpenTelemetry and Langfuse.
+
+### Event Streams or Message Queues
+
+- None detected; the system operates as a CLI tool without event streaming or message queue integration.
+
+---
+
+## API Documentation
+
+### CLI Commands
+
+| Command           | Description                                | Key Parameters                                   | Output                                   |
+|-------------------|--------------------------------------------|-------------------------------------------------|------------------------------------------|
+| `analyze`         | Runs code analysis on a repository         | `--repo-path` (required), exclude flags for analysis types | Markdown analysis files in `.ai/docs/`  |
+| `document`        | Generates README documentation              | `--repo-path` (required), section exclusion flags, `--use-existing-readme` | `README.md` in repository root           |
+| `cronjob analyze` | Automated GitLab project analysis and MR creation | `--max-days-since-last-commit`, `--working-path`, `--group-project-id` | Merge requests with analysis results     |
+
+### Request/Response Formats
+
+- **analyze**
+  - Request: CLI arguments parsed into `AnalyzeHandlerConfig` including repository path and analysis options.
+  - Response: Markdown files generated under `.ai/docs/` directory.
+
+- **document**
+  - Request: CLI arguments parsed into `ReadmeHandlerConfig`.
+  - Response: `README.md` file written to repository root.
+
+- **cronjob analyze**
+  - Request: CLI arguments parsed into `JobAnalyzeHandlerConfig`.
+  - Response: Merge requests created in GitLab projects with analysis results.
+
+### Authentication
+
+- GitLab and Bitbucket API tokens configured via environment variables.
+- LLM API keys configured via environment variables.
+
+---
+
+## Development Notes
+
+- Use Pydantic models for configuration and validation.
+- Follow asynchronous programming patterns with async/await.
+- Logging is centralized via the `Logger` utility.
+- Testing should cover handlers, agents, and provider integrations.
+- Performance considerations include asynchronous execution and HTTP client retry logic.
+
+---
+
+## Known Issues and Limitations
+
+- No explicit user authentication or authorization middleware; relies on API tokens.
+- Manual dependency injection may increase boilerplate.
+- Tight coupling to GitLab API in cronjob handler could be abstracted further.
+- Additional documentation on agent prompt templates and internal data models would be helpful.
+
+---
+
+## Additional Documentation
+
+- See `.ai/docs/api_analysis.md` for detailed API and integration documentation.
+- See `.ai/docs/request_flow_analysis.md` for request lifecycle and flow.
+- See `.ai/docs/data_flow_analysis.md` for data modeling and transformation.
+- See `.ai/docs/dependency_analysis.md` for dependency and module relationships.
+
+---
+
+*This README was generated automatically based on codebase analysis to assist new developers in understanding and contributing to the project.*
