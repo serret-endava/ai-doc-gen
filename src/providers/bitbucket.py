@@ -7,7 +7,6 @@ from urllib.parse import quote
 
 DEFAULT_API_URL = "https://api.bitbucket.org/2.0"
 
-
 @dataclass
 class _BBProjectRef:
     """
@@ -268,6 +267,6 @@ class BitbucketProvider:
         You can define BITBUCKET_USER_NAME / BITBUCKET_USER_EMAIL;
         sensible defaults are provided as fallback.
         """
-        name = os.getenv("BITBUCKET_USER_NAME") or "AI Analyzer"
-        email = os.getenv("BITBUCKET_USER_EMAIL") or "ai-doc@company.com"
+        name = os.getenv("BITBUCKET_USER_NAME", "AI Analyzer")
+        email = os.getenv("BITBUCKET_USER_EMAIL", "ai-doc@company.com")
         return name, email

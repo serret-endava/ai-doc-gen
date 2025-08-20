@@ -8,11 +8,7 @@ from gitlab.v4.objects.projects import Project
 from gitlab.v4.objects.branches import ProjectBranch
 from gitlab.exceptions import GitlabGetError, GitlabListError, GitlabCreateError
 
-
-def _parse_iso_dt(s: str) -> datetime:
-    """Normalize GitLab ISO timestamps to naive UTC datetimes."""
-    return datetime.fromisoformat(s.replace("Z", "+00:00")).replace(tzinfo=None)
-
+DEFAULT_API_URL = "https://gitlab.com"
 
 class GitLabProvider:
     """
@@ -34,24 +30,17 @@ class GitLabProvider:
         """
         Accepts an injected python-gitlab client. If not provided, builds one from env:
           - GITLAB_API_URL or GITLAB_URL (defaults to https://gitlab.com)
-          - GITLAB_OAUTH_TOKEN or GITLAB_TOKEN
         """
         if gitlab_client is not None:
             self.gl = gitlab_client
         else:
-            base_url = (
-                os.environ.get("GITLAB_API_URL")
-                or os.environ.get("GITLAB_URL")
-                or "https://gitlab.com"
-            )
-            oauth_token = os.environ.get("GITLAB_OAUTH_TOKEN")
-            private_token = os.environ.get("GITLAB_TOKEN")
-            if oauth_token:
-                self.gl = gitlab.Gitlab(base_url, oauth_token=oauth_token)
-            elif private_token:
+            
+            base_url = os.getenv("BITBUCKET_API_URL", DEFAULT_API_URL).rstrip("/")
+            private_token = os.environ.get("GITLAB_OAUTH_TOKEN")
+            if private_token:
                 self.gl = gitlab.Gitlab(base_url, private_token=private_token)
             else:
-                raise RuntimeError("Missing GITLAB_OAUTH_TOKEN or GITLAB_TOKEN.")
+                raise RuntimeError("Missing GITLAB_OAUTH_TOKEN.")
 
     # -------- Group project discovery --------
     def iter_group_projects(self, group_id: int) -> Iterator[Project]:
