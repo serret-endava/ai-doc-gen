@@ -1,32 +1,30 @@
-# Project Title: AI-Powered Code Analysis and Documentation CLI Tool
+# Project Overview
 
-## Project Overview
+## Project Title
+AI-Powered Code Analysis and Documentation CLI Tool
 
-This project is a command-line interface (CLI) tool designed to perform asynchronous AI-driven code analysis and documentation generation on software repositories. It integrates with external Git repository services such as GitLab and Bitbucket to automate project analysis, generate detailed markdown reports, and create merge requests with analysis results.
+## Purpose and Main Functionality
+This project is a command-line interface (CLI) tool designed to perform asynchronous AI-driven code analysis and documentation generation on software repositories. It automates the process of analyzing codebases, generating detailed markdown reports, and creating merge requests with analysis results on GitLab projects.
 
-### Purpose and Main Functionality
-- Analyze code repositories asynchronously using AI agents.
-- Generate comprehensive README documentation automatically.
-- Automate scheduled analysis jobs on GitLab projects with merge request creation.
-- Provide a modular, extensible CLI interface for various code analysis and documentation tasks.
+## Key Features and Capabilities
+- Asynchronous AI-based code analysis using configurable agents.
+- README documentation generation with AI assistance.
+- Scheduled cronjob support for automated analysis of GitLab projects.
+- Integration with GitLab and Bitbucket for repository management.
+- Automated merge request creation with analysis results.
+- Robust retry and error handling mechanisms.
+- Configurable via CLI flags and YAML configuration files.
+- Structured logging and telemetry support.
 
-### Key Features and Capabilities
-- CLI commands for analysis (`analyze`), documentation generation (`document`), and scheduled cronjob analysis (`cronjob analyze`).
-- Asynchronous execution of AI agents for efficient processing.
-- Integration with GitLab and Bitbucket APIs for project discovery, cloning, and merge request management.
-- Configuration management via Pydantic models and YAML config files.
-- Structured logging and telemetry with OpenTelemetry and Langfuse.
-- Resilient HTTP client with retry and exponential backoff.
-
-### Likely Intended Use Cases
-- Developers and teams seeking automated insights into codebases.
-- Continuous integration pipelines requiring automated code analysis and documentation.
-- Scheduled maintenance jobs to keep project documentation and analysis up to date.
-- Organizations using GitLab or Bitbucket for source control and merge request workflows.
+## Likely Intended Use Cases
+- Continuous code quality and architecture analysis in CI/CD pipelines.
+- Automated documentation generation for code repositories.
+- Scheduled repository health checks and analysis in GitLab groups.
+- Integration with GitLab workflows to automate merge requests with AI insights.
 
 ---
 
-## Table of Contents
+# Table of Contents
 
 - [Project Overview](#project-overview)
 - [Architecture](#architecture)
@@ -40,117 +38,105 @@ This project is a command-line interface (CLI) tool designed to perform asynchro
 
 ---
 
-## Architecture
+# Architecture
 
-### High-level Architecture Overview
+## High-level Architecture Overview
+The system is a modular CLI tool that orchestrates AI-driven code analysis and documentation generation workflows. It separates concerns into distinct components: CLI entry point, handlers for command processing, AI agents for analysis and documentation, providers for external service integration, and utility modules for shared functionality.
 
-The system is a modular CLI tool that orchestrates asynchronous AI agents to analyze code repositories and generate documentation. It integrates with external Git services for project management and automates merge request creation. The architecture separates concerns into handlers, agents, providers, and utilities.
-
-### Technology Stack and Frameworks
-
-- Python 3 with asynchronous programming (asyncio)
-- Pydantic for data validation and configuration management
+## Technology Stack and Frameworks
+- Python 3.10+
+- Asynchronous programming with asyncio
+- Pydantic for configuration and data validation
+- GitPython for git operations
+- Python-GitLab and REST API clients for GitLab and Bitbucket integration
 - Jinja2 for prompt templating
 - OpenTelemetry and Langfuse for telemetry and tracing
-- GitLab and Bitbucket API clients
 - HTTPX and Tenacity for resilient HTTP client with retry logic
-- GitPython for git repository operations
 
-### Component Relationships
+## Component Relationships
 
 ```mermaid
 flowchart TB
   subgraph CLI
-    A[CLI Entry Point (src/main.py)]
+    direction TB
+    CLI[src/main.py: CLI Entry Point]
   end
 
   subgraph Handlers
-    B1[AnalyzeHandler]
-    B2[ReadmeHandler]
-    B3[JobAnalyzeHandler]
+    direction TB
+    AnalyzeHandler[src/handlers/analyze.py]
+    ReadmeHandler[src/handlers/readme.py]
+    JobAnalyzeHandler[src/handlers/cronjob.py]
   end
 
   subgraph Agents
-    C1[AnalyzerAgent]
-    C2[DocumenterAgent]
+    direction TB
+    AnalyzerAgent[src/agents/analyzer.py]
+    DocumenterAgent[src/agents/documenter.py]
   end
 
   subgraph Providers
-    D1[GitLabProvider]
-    D2[BitbucketProvider]
+    direction TB
+    GitLabProvider[src/providers/gitlab.py]
+    BitbucketProvider[src/providers/bitbucket.py]
   end
 
   subgraph Utils
-    E1[Logger]
-    E2[PromptManager]
-    E3[Retrying HTTP Client]
-    E4[Repo Utilities]
+    direction TB
+    Logger[src/utils/logger.py]
+    PromptManager[src/utils/prompt_manager.py]
+    RetryClient[src/utils/retry_client.py]
   end
 
-  A -->|Dispatch commands| B1
-  A --> B2
-  A --> B3
+  CLI -->|Dispatch commands| Handlers
+  Handlers -->|Invoke| Agents
+  Handlers -->|Use| Providers
+  Agents -->|Use| Utils
+  Handlers -->|Use| Utils
+  Providers -->|Use| Utils
 
-  B1 -->|Invoke| C1
-  B2 -->|Invoke| C2
-  B3 -->|Use| B1
-  B3 -->|Use| D1
+  classDef cli fill:#f9f,stroke:#333,stroke-width:2px
+  class CLI cli
 
-  B1 --> E1
-  B2 --> E1
-  B3 --> E1
+  classDef handler fill:#bbf,stroke:#333,stroke-width:2px
+  class Handlers handler
 
-  C1 --> E2
-  C2 --> E2
+  classDef agent fill:#bfb,stroke:#333,stroke-width:2px
+  class Agents agent
 
-  D1 --> E3
-  D2 --> E3
+  classDef provider fill:#fbf,stroke:#333,stroke-width:2px
+  class Providers provider
 
-  B3 --> D1
-
-  style A fill:#f9f,stroke:#333,stroke-width:2px
-  style B1 fill:#bbf,stroke:#333,stroke-width:1px
-  style B2 fill:#bbf,stroke:#333,stroke-width:1px
-  style B3 fill:#bbf,stroke:#333,stroke-width:1px
-  style C1 fill:#bfb,stroke:#333,stroke-width:1px
-  style C2 fill:#bfb,stroke:#333,stroke-width:1px
-  style D1 fill:#ffb,stroke:#333,stroke-width:1px
-  style D2 fill:#ffb,stroke:#333,stroke-width:1px
-  style E1 fill:#fbb,stroke:#333,stroke-width:1px
-  style E2 fill:#fbb,stroke:#333,stroke-width:1px
-  style E3 fill:#fbb,stroke:#333,stroke-width:1px
-  style E4 fill:#fbb,stroke:#333,stroke-width:1px
+  classDef util fill:#ffb,stroke:#333,stroke-width:2px
+  class Utils util
 ```
 
-### Key Design Patterns
-
+## Key Design Patterns
 - Factory pattern for provider instantiation based on configuration.
-- Dependency injection via constructor parameters for handlers and providers.
-- Asynchronous programming with async/await for concurrency.
-- Template rendering for prompt generation using Jinja2.
+- Dependency injection for handlers and providers.
+- Asynchronous programming with async/await.
+- Template rendering with Jinja2 for prompt management.
 
 ---
 
-## C4 Model Architecture
+# C4 Model Architecture
 
 <details>
 <summary>Context Diagram</summary>
 
 ```mermaid
-flowchart TB
-  User[User (Developer/CI System)]
-  CLI[CLI Tool]
+graph LR
+  User[User CLI]
+  System[AI Code Analysis CLI Tool]
   GitLab[GitLab Service]
   Bitbucket[Bitbucket Service]
-  LLM[LLM Providers (OpenAI, Gemini)]
 
-  User -->|Runs commands| CLI
-  CLI -->|Uses API tokens| GitLab
-  CLI -->|Uses API tokens| Bitbucket
-  CLI -->|Calls| LLM
+  User -->|Runs CLI commands| System
+  System -->|Uses API tokens| GitLab
+  System -->|Uses API tokens| Bitbucket
 
-  classDef external fill:#f96,stroke:#333,stroke-width:1px,color:#000
-  class GitLab,Bitbucket,LLM external
+  classDef external fill:#f96,stroke:#333,stroke-width:2px,color:#000
+  class GitLab,Bitbucket external
 ```
 
 </details>
@@ -159,62 +145,58 @@ flowchart TB
 <summary>Container Diagram</summary>
 
 ```mermaid
-flowchart TB
-  subgraph CLI Tool
-    direction TB
-    Main[Main CLI Entry (src/main.py)]
-    Handlers[Handlers]
-    Agents[Agents]
-    Providers[Providers]
-    Utils[Utilities]
-  end
+graph TD
+  CLI[src/main.py: CLI Entry Point]
+  Handlers[Handlers]
+  Agents[AI Agents]
+  Providers[External Service Providers]
+  Utils[Utility Modules]
 
-  Main -->|Dispatch commands| Handlers
-  Handlers -->|Invoke asynchronously| Agents
-  Handlers -->|Use| Providers
-  Handlers -->|Use| Utils
-  Providers -->|HTTP API calls| ExternalAPIs[GitLab/Bitbucket APIs]
-  Agents -->|Call| LLMs[LLM APIs]
+  CLI --> Handlers
+  Handlers --> Agents
+  Handlers --> Providers
+  Agents --> Utils
+  Handlers --> Utils
+  Providers --> Utils
 
-  class ExternalAPIs external
-  class LLMs external
+  class CLI fill:#bbf,stroke:#333,stroke-width:2px
+  class Handlers fill:#bfb,stroke:#333,stroke-width:2px
+  class Agents fill:#fbf,stroke:#333,stroke-width:2px
+  class Providers fill:#fbb,stroke:#333,stroke-width:2px
+  class Utils fill:#ffb,stroke:#333,stroke-width:2px
 ```
 
 </details>
 
 ---
 
-## Repository Structure
+# Repository Structure
 
-| Directory/File         | Purpose                                      |
-|-----------------------|----------------------------------------------|
-| `src/main.py`          | CLI entry point and command dispatcher       |
-| `src/handlers/`        | Command handlers for analyze, document, cronjob |
-| `src/agents/`          | AI agent implementations for analysis and documentation |
-| `src/providers/`       | External service API clients (GitLab, Bitbucket) |
-| `src/utils/`           | Shared utilities (logging, prompt management, HTTP client) |
-| `.ai/docs/`            | Generated markdown analysis and documentation files |
+- `src/main.py`: CLI entry point and command dispatcher.
+- `src/handlers/`: Contains command handlers (`AnalyzeHandler`, `ReadmeHandler`, `JobAnalyzeHandler`).
+- `src/agents/`: AI agents implementing analysis and documentation logic.
+- `src/providers/`: External service API clients for GitLab and Bitbucket.
+- `src/utils/`: Shared utilities such as logging, prompt management, and HTTP client.
 
 ---
 
-## Dependencies and Integration
+# Dependencies and Integration
 
-### Internal and External Service Dependencies
+## Internal Dependencies
+- Handlers depend on agents and providers.
+- Providers depend on HTTP clients and external APIs.
+- Utils provide shared services like logging and retry logic.
 
-- GitLab API for project discovery, cloning, branch and merge request management.
-- Bitbucket API for similar repository and pull request management.
-- LLM providers (OpenAI, Gemini) for AI-driven code analysis and documentation.
-- Logging and telemetry services via OpenTelemetry and Langfuse.
-
-### Event Streams or Message Queues
-
-- None detected; the system operates as a CLI tool without event streaming or message queue integration.
+## External Service Dependencies
+- GitLab API for project discovery, repository cloning, branch and merge request management.
+- Bitbucket API for repository and pull request management.
+- LLM providers (OpenAI, Gemini) for AI-driven analysis and documentation.
 
 ---
 
-## API Documentation
+# API Documentation
 
-### CLI Commands
+## CLI Commands
 
 | Command           | Description                                | Key Parameters                                   | Output                                   |
 |-------------------|--------------------------------------------|-------------------------------------------------|------------------------------------------|
@@ -222,53 +204,93 @@ flowchart TB
 | `document`        | Generates README documentation              | `--repo-path` (required), section exclusion flags, `--use-existing-readme` | `README.md` in repository root           |
 | `cronjob analyze` | Automated GitLab project analysis and MR creation | `--max-days-since-last-commit`, `--working-path`, `--group-project-id` | Merge requests with analysis results     |
 
-### Request/Response Formats
-
-- **analyze**
-  - Request: CLI arguments parsed into `AnalyzeHandlerConfig` including repository path and analysis options.
-  - Response: Markdown files generated under `.ai/docs/` directory.
-
-- **document**
-  - Request: CLI arguments parsed into `ReadmeHandlerConfig`.
-  - Response: `README.md` file written to repository root.
-
-- **cronjob analyze**
-  - Request: CLI arguments parsed into `JobAnalyzeHandlerConfig`.
-  - Response: Merge requests created in GitLab projects with analysis results.
-
-### Authentication
-
-- GitLab and Bitbucket API tokens configured via environment variables.
-- LLM API keys configured via environment variables.
+## Request/Response Formats
+- Commands accept CLI flags parsed into Pydantic config models.
+- Responses are markdown files written to the repository or merge requests created in GitLab.
+- Authentication is handled via environment variables for API tokens.
 
 ---
 
-## Development Notes
+# Development Notes
 
+## Project-specific Conventions
 - Use Pydantic models for configuration and validation.
-- Follow asynchronous programming patterns with async/await.
-- Logging is centralized via the `Logger` utility.
-- Testing should cover handlers, agents, and provider integrations.
-- Performance considerations include asynchronous execution and HTTP client retry logic.
+- Handlers implement async `handle()` methods.
+- Logging via centralized `Logger` utility.
+- Prompt templates managed with Jinja2 in YAML files.
+
+## Testing Requirements
+- Unit and integration tests should cover handlers, agents, and providers.
+- Mock external API calls for GitLab and Bitbucket.
+
+## Performance Considerations
+- Asynchronous execution for concurrent analysis.
+- Retry logic with backoff for transient errors.
+
+## Cronjob Configuration Options
+
+| Option Name               | Type     | Default                         | Description                                               |
+|---------------------------|----------|---------------------------------|-----------------------------------------------------------|
+| max_days_since_last_commit | int      | 30                              | Maximum days since last commit to consider a project      |
+| working_path              | Path     | /tmp/cronjob/projects           | Path where projects are cloned for cronjob execution      |
+| group_project_id          | int      | 3                               | Group ID (GitLab) whose projects will be analyzed         |
+| provider                 | str      | gitlab                          | Provider to use for repo operations (gitlab, bitbucket)   |
+| source_branch            | str      | None                            | Branch to base the analysis on; falls back to default     |
+| target_branch            | str      | None                            | MR/PR target branch; defaults to repository default       |
+| bitbucket_project_key    | str      | None                            | Bitbucket only: filter repositories by project key        |
+| analyzer_max_retries     | int      | 3                               | Number of retries for analyzer on transient errors        |
+| retry_backoff_seconds    | float    | 3.0                             | Seconds to wait between analyzer retries                   |
+| enforce_docs             | bool     | True                            | Create placeholder files for missing analysis docs        |
+
+### Usage Examples
+```bash
+# Run cronjob with default max days since last commit
+cronjob analyze --max-days-since-last-commit 10
+
+# Specify working path for cloning projects
+cronjob analyze --working-path /var/tmp/projects
+
+# Analyze projects in a specific GitLab group
+cronjob analyze --group-project-id 5
+
+# Use Bitbucket provider with project key filter
+cronjob analyze --provider bitbucket --bitbucket-project-key AID
+
+# Customize analyzer retry behavior
+cronjob analyze --analyzer-max-retries 5 --retry-backoff-seconds 5.0
+
+# Disable placeholder doc creation
+cronjob analyze --enforce-docs false
+```
+
+### How Options Affect Cronjob Execution
+- `max_days_since_last_commit`: Filters out projects with commits older than this threshold to avoid stale analysis.
+- `working_path`: Directory where repositories are cloned for analysis.
+- `group_project_id`: Limits analysis to projects within a specific GitLab group.
+- `provider`: Selects the external service provider for repository operations.
+- `source_branch` and `target_branch`: Control the branches used for analysis and merge request creation.
+- `bitbucket_project_key`: Filters Bitbucket repositories by project key.
+- `analyzer_max_retries` and `retry_backoff_seconds`: Control retry behavior for transient errors during analysis.
+- `enforce_docs`: Ensures all expected analysis documents exist by creating placeholders if missing.
 
 ---
 
-## Known Issues and Limitations
+# Known Issues and Limitations
 
-- No explicit user authentication or authorization middleware; relies on API tokens.
-- Manual dependency injection may increase boilerplate.
-- Tight coupling to GitLab API in cronjob handler could be abstracted further.
-- Additional documentation on agent prompt templates and internal data models would be helpful.
+- Some features are GitLab-specific; Bitbucket support is partial and may require enhancements.
+- Manual dependency injection leads to boilerplate wiring.
+- No user authentication middleware as this is a CLI tool.
+- Potential for improved test coverage and error handling robustness.
+- Additional documentation on prompt templates and agent internals would be helpful.
 
 ---
 
-## Additional Documentation
+# Additional Documentation
 
 - See `.ai/docs/api_analysis.md` for detailed API and integration documentation.
-- See `.ai/docs/request_flow_analysis.md` for request lifecycle and flow.
-- See `.ai/docs/data_flow_analysis.md` for data modeling and transformation.
-- See `.ai/docs/dependency_analysis.md` for dependency and module relationships.
+- See `.ai/docs/data_flow_analysis.md` for data lifecycle and transformation details.
+- See `.ai/docs/dependency_analysis.md` for module dependency insights.
 
 ---
 
-*This README was generated automatically based on codebase analysis to assist new developers in understanding and contributing to the project.*
+*This README was generated automatically based on code analysis and repository structure.*
