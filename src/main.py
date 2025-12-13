@@ -14,6 +14,7 @@ from gitlab import Gitlab
 from pydantic import BaseModel
 from pydantic.fields import FieldInfo
 from pydantic_core import PydanticUndefinedType
+from providers import get_provider
 
 import config
 from config import load_config
@@ -75,13 +76,8 @@ async def cronjob_analyze(args: argparse.Namespace):
         file_level=config.FILE_LOG_LEVEL,
         console_level=config.CONSOLE_LOG_LEVEL,
     )
-
-    gitlab_client = Gitlab(
-        url=config.GITLAB_API_URL,
-        oauth_token=config.GITLAB_OAUTH_TOKEN,
-    )
-
-    handler = JobAnalyzeHandler(config=cfg, gitlab_client=gitlab_client)
+    provider = get_provider(name=cfg.provider)
+    handler = JobAnalyzeHandler(config=cfg, provider=provider)
 
     await handler.handle()
 

@@ -3,172 +3,98 @@
 ## APIs Served by This Project
 
 ### Overview
-This project is an AI-powered code documentation generator that provides a command-line interface rather than traditional REST APIs. The system operates through CLI commands and does not expose HTTP endpoints for external consumption.
+This project is a CLI tool and does not expose HTTP API endpoints. Instead, it provides a command-line interface with several commands to perform code analysis, documentation generation, and scheduled cronjob analysis with merge request creation.
 
-### Command-Line Interface
-The application serves functionality through three main CLI commands:
+### CLI Commands and Usage
 
-#### Analyze Command
-- **Command**: `ai-doc-gen analyze`
-- **Description**: Runs comprehensive code analysis on a repository
-- **Parameters**:
-  - `--repo-path` (required): Path to the repository to analyze
-  - `--exclude-code-structure`: Skip code structure analysis
-  - `--exclude-data-flow`: Skip data flow analysis  
-  - `--exclude-dependencies`: Skip dependency analysis
-  - `--exclude-request-flow`: Skip request flow analysis
-  - `--exclude-api-analysis`: Skip API analysis
-- **Output**: Creates analysis files in `{repo_path}/.ai/docs/`:
-  - `structure_analysis.md`
-  - `dependency_analysis.md`
-  - `data_flow_analysis.md`
-  - `request_flow_analysis.md`
-  - `api_analysis.md`
+| Command           | Description                                | Key Parameters                                   | Output                                   |
+|-------------------|--------------------------------------------|-------------------------------------------------|------------------------------------------|
+| `analyze`         | Runs code analysis on a repository         | `--repo-path` (required), exclude flags for analysis types | Markdown analysis files in `.ai/docs/`  |
+| `document`        | Generates README documentation              | `--repo-path` (required), section exclusion flags, `--use-existing-readme` | `README.md` in repository root           |
+| `cronjob analyze` | Automated GitLab project analysis and MR creation | `--max-days-since-last-commit`, `--working-path`, `--group-project-id` | Merge requests with analysis results     |
 
-#### Document Command
-- **Command**: `ai-doc-gen document`
-- **Description**: Generates comprehensive README documentation
-- **Parameters**:
-  - `--repo-path` (required): Path to the repository
-  - Various `--exclude-*` flags for README sections
-  - `--use-existing-readme`: Incorporate existing README content
-- **Output**: Creates/updates `README.md` in the repository root
+### Command Details
 
-#### Cronjob Command
-- **Command**: `ai-doc-gen cronjob analyze`
-- **Description**: Automated analysis for GitLab projects
-- **Parameters**:
-  - `--max-days-since-last-commit`: Filter projects by activity (default: 30)
-  - `--working-path`: Temporary directory for cloning (default: `/tmp/cronjob/projects`)
-  - `--group-project-id`: GitLab group ID to analyze (default: 3)
-- **Output**: Creates merge requests with analysis results
+#### analyze
+- **Description:** Runs asynchronous AI-driven code analysis on a specified repository path.
+- **Request:**
+  - CLI arguments parsed from `AnalyzeHandlerConfig` (includes `repo_path` and various exclude flags).
+- **Response:**
+  - Generates markdown analysis files under `.ai/docs/` directory.
+- **Authentication:**
+  - Uses configured LLM API keys and Git provider credentials.
 
-### Authentication & Security
-- **CLI Access**: No authentication required for local usage
-- **GitLab Integration**: Uses OAuth token (`GITLAB_OAUTH_TOKEN`) for repository access
-- **LLM Services**: Requires API keys for analyzer and documenter models
-- **Observability**: Optional Langfuse integration for monitoring
+#### document
+- **Description:** Generates README documentation for a repository.
+- **Request:**
+  - CLI arguments parsed from `ReadmeHandlerConfig`.
+- **Response:**
+  - Writes `README.md` file in the repository root.
+- **Authentication:**
+  - Uses configured LLM API keys.
 
-### Rate Limiting & Constraints
-- **LLM API Limits**: Subject to configured model provider rate limits
-- **GitLab API**: Standard GitLab API rate limiting applies
-- **Parallel Processing**: Configurable parallel tool calls for LLM agents
-- **Timeout Settings**: 180-second timeout for LLM requests
-- **Token Limits**: 8192 max tokens per LLM response
+#### cronjob analyze
+- **Description:** Runs scheduled analysis on GitLab projects, clones repos, runs analysis, and creates merge requests.
+- **Request:**
+  - CLI arguments parsed from `JobAnalyzeHandlerConfig` (e.g., `max_days_since_last_commit`, `working_path`, `group_project_id`).
+- **Response:**
+  - Creates merge requests with analysis results in GitLab.
+- **Authentication:**
+  - Uses GitLab or Bitbucket API tokens from environment variables.
+
+## Authentication & Security
+
+- GitLab API authentication via OAuth tokens or private tokens (`GITLAB_OAUTH_TOKEN`, `GITLAB_TOKEN`).
+- Bitbucket API authentication via username and app password (`BITBUCKET_USERNAME`, `BITBUCKET_APP_PASSWORD`).
+- LLM API keys configured via environment variables (`ANALYZER_LLM_API_KEY`, `DOCUMENTER_LLM_API_KEY`).
+- Git commit identity configurable via environment variables.
+
+## Rate Limiting & Constraints
+
+- HTTP client uses retry logic with exponential backoff for transient errors and rate limits.
+- Retry up to 5 times on HTTP 429, 502, 503, 504 errors.
+- Waits according to `Retry-After` headers or exponential backoff.
 
 ## External API Dependencies
 
-### LLM Services (Primary Dependencies)
+### Services Consumed
 
-#### Analyzer LLM Service
-- **Service Name**: Code Analysis LLM Provider
-- **Purpose**: Powers AI agents for code structure, data flow, dependency, request flow, and API analysis
-- **Configuration**:
-  - Base URL: `ANALYZER_LLM_BASE_URL`
-  - API Key: `ANALYZER_LLM_API_KEY`
-  - Model: `ANALYZER_LLM_MODEL` (e.g., claude-sonnet-4-20250514)
-- **Endpoints Used**: OpenAI-compatible chat completions API
-- **Authentication**: Bearer token authentication
-- **Error Handling**: 2 retries with exponential backoff
-- **Integration Pattern**: Uses pydantic-ai with OpenAI provider
+#### GitLab
+- **Purpose:** Project discovery, repository cloning, branch and merge request management.
+- **Base URL:** Configurable via `GITLAB_API_URL` (default `https://gitlab.com`).
+- **Endpoints Used:** Group projects, branches, commits, merge requests.
+- **Authentication:** OAuth token or private token.
+- **Error Handling:** Raises exceptions on API errors; handled with retries in cronjob.
+- **Retry/Circuit Breaker:** Uses HTTP client with retry logic.
 
-#### Documenter LLM Service  
-- **Service Name**: Documentation Generation LLM Provider
-- **Purpose**: Generates comprehensive README documentation from analysis results
-- **Configuration**:
-  - Base URL: `DOCUMENTER_LLM_BASE_URL`
-  - API Key: `DOCUMENTER_LLM_API_KEY`
-  - Model: `DOCUMENTER_LLM_MODEL`
-- **Endpoints Used**: OpenAI-compatible or Gemini API
-- **Authentication**: API key authentication
-- **Error Handling**: 2 retries with timeout handling
-- **Integration Pattern**: Supports both OpenAI and Gemini providers
+#### Bitbucket
+- **Purpose:** Repository and pull request management.
+- **Base URL:** Configurable via `BITBUCKET_API_URL` (default `https://api.bitbucket.org/2.0`).
+- **Endpoints Used:** Repositories, branches, commits, pull requests.
+- **Authentication:** Username and app password.
+- **Error Handling:** Raises exceptions on API errors.
+- **Retry/Circuit Breaker:** Uses HTTP client with retry logic.
 
-### GitLab API Integration
-
-#### GitLab REST API
-- **Service Name**: GitLab Repository Management
-- **Purpose**: Repository cloning, branch management, merge request creation
-- **Base URL**: `GITLAB_API_URL` (default: https://git.divar.cloud)
-- **Endpoints Used**:
-  - `/api/v4/groups/{id}/projects` - List group projects
-  - `/api/v4/projects/{id}` - Get project details
-  - `/api/v4/projects/{id}/repository/branches` - Branch operations
-  - `/api/v4/projects/{id}/merge_requests` - MR management
-- **Authentication**: OAuth token (`GITLAB_OAUTH_TOKEN`)
-- **Error Handling**: Built-in python-gitlab library error handling
-- **Rate Limiting**: Respects GitLab API rate limits
-- **Integration Pattern**: Uses python-gitlab library wrapper
-
-### Observability Services
-
-#### Langfuse Integration
-- **Service Name**: LLM Observability Platform
-- **Purpose**: Monitoring LLM usage, costs, and performance
-- **Configuration**:
-  - Public Key: `LANGFUSE_PUBLIC_KEY`
-  - Secret Key: `LANGFUSE_SECRET_KEY`
-  - Host: `LANGFUSE_HOST`
-- **Authentication**: Basic auth with encoded credentials
-- **Integration Pattern**: OpenTelemetry integration via logfire
-
-#### OpenTelemetry Collector
-- **Service Name**: Telemetry Data Collection
-- **Purpose**: Distributed tracing and metrics collection
-- **Configuration**: `OTEL_EXPORTER_OTLP_ENDPOINT`
-- **Authentication**: Header-based authentication
-- **Integration Pattern**: Automatic instrumentation via logfire
+#### LLM Providers (OpenAI, Gemini)
+- **Purpose:** AI-driven code analysis and documentation generation.
+- **Base URL:** Configurable via environment variables.
+- **Authentication:** API keys via environment variables.
+- **Error Handling:** Retries handled in agent logic.
 
 ### Integration Patterns
 
-#### Async Processing
-- All LLM interactions use async/await patterns
-- Concurrent execution of multiple analysis agents
-- Graceful error handling with `asyncio.gather(return_exceptions=True)`
-
-#### Configuration Management
-- Environment variable-based configuration
-- YAML file overrides for project-specific settings
-- Hierarchical configuration merging (defaults → file → CLI args)
-
-#### Error Resilience
-- **LLM Retries**: 2 automatic retries for model failures
-- **Tool Retries**: 2 retries for file system operations
-- **Timeout Handling**: 180-second timeouts for LLM requests
-- **Graceful Degradation**: Continues processing even if some agents fail
-
-#### Resource Management
-- Temporary directory cleanup for cronjob operations
-- Git repository cloning with automatic cleanup
-- Memory-efficient file processing with line-based reading
+- Provider abstraction pattern for GitLab and Bitbucket.
+- Asynchronous execution of AI agents.
+- CLI-driven invocation with configuration via Pydantic models.
+- Structured logging and telemetry with OpenTelemetry and Langfuse.
+- HTTP client with retry and backoff for resilience.
 
 ## Available Documentation
 
-### Configuration Documentation
-- **File**: `config_example.yaml` - Complete configuration reference
-- **File**: `.env.sample` - Environment variable template
-- **Quality**: Comprehensive with inline comments and examples
+- API analysis and data flow documents in `.ai/docs/` directory.
+- README.md provides architecture overview, repository structure, and usage.
+- Configuration samples in `.env.sample`.
 
-### Agent Prompts
-- **Directory**: `src/agents/prompts/`
-- **Files**: 
-  - `analyzer.yaml` - System and user prompts for analysis agents
-  - `documenter.yaml` - Prompts for documentation generation
-- **Quality**: Well-structured YAML with detailed prompt engineering
+---
 
-### Code Documentation
-- **Type**: Inline docstrings and type hints throughout codebase
-- **Coverage**: Comprehensive docstrings for all public methods
-- **Quality**: High-quality with examples and parameter descriptions
-
-### Tool Documentation
-- **Files**: Individual tool classes with detailed docstrings
-- **Coverage**: Complete documentation for file reading and directory listing tools
-- **Quality**: Production-ready with error handling documentation
-
-### Integration Guides
-- **Docker**: `Dockerfile` provides containerization setup
-- **Dependencies**: `pyproject.toml` with complete dependency specifications
-- **Quality**: Production-ready configuration files
-
-The project demonstrates excellent documentation practices with comprehensive configuration examples, detailed prompts, and thorough inline documentation suitable for both human developers and AI agents.
+*This documentation was generated by analyzing the project source code and configuration.*

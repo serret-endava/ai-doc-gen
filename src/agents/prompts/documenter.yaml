@@ -99,6 +99,10 @@ agents:
       - Project-specific conventions
       - Testing requirements
       - Performance considerations
+      - Cronjob Configuration Options:
+        - Document the commands and configuration options of the `JobAnalyzeHandlerConfig` class (located in `src/handlers/cronjob.py`) in a Markdown table. For each option, include: name, type, default value, and description.
+        - Add usage examples showing how to set each option via CLI flags (e.g., --max-days-since-last-commit 10).
+        - Explain how each option affects the cronjob execution.
       {% endif %}
 
       {% if exclude_known_issues_and_limitations == False %}

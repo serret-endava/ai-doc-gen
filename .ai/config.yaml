@@ -1,17 +1,34 @@
-analyzer: {}
+# Example configuration file for AI Doc Gen
 
+# Analyzer configuration options
+analyzer:
+  # Analysis exclusions - set to true to exclude specific analyses
+  exclude_code_structure: false
+  exclude_data_flow: false
+  exclude_dependencies: false
+  exclude_request_flow: false
+  exclude_api_analysis: false
+
+# Documenter configuration options
 documenter:
   readme:
-    exclude_additional_documentation: false
-    exclude_api_documentation: true
-    exclude_architecture: false
-    exclude_c4_model: true
-    exclude_dependencies_and_integration: false
-    exclude_development_notes: true
-    exclude_known_issues_and_limitations: true
+    # README section exclusions - set to true to exclude sections from the README
     exclude_project_overview: false
-    exclude_repository_structure: false
     exclude_table_of_contents: false
+    exclude_architecture: false
+    exclude_c4_model: false
+    exclude_repository_structure: false
+    exclude_dependencies_and_integration: false
+    exclude_api_documentation: false
+    exclude_development_notes: false
+    exclude_known_issues_and_limitations: false
+    exclude_additional_documentation: false
+    use_existing_readme: false
 
+# Cronjob analyzer configuration options
 cronjob:
-  analyze: {}
+  analyze:
+    # Maximum days since last commit to consider a project
+    max_days_since_last_commit: 30
+    # Path to clone projects for cronjob execution
+    working_path: "/tmp/cronjob/projects"
